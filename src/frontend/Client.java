@@ -8,52 +8,39 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class Client {
+    int serverPort;
+    String serverAddress;
 
-    public static void main(String[] args) {
+    boolean isConnected;
+
+    public boolean isConnected() {
+        return isConnected;
+    }
+
+    public Client(int serverPort, String serverAddress) {
+        this.serverPort = serverPort;
+        this.serverAddress = serverAddress;
+    }
+
+    public void execute() throws IOException {
         Socket clientSocket;
         BufferedReader in;
         PrintWriter out;
         Scanner kb = new Scanner(System.in);
         try {
-            clientSocket = new Socket("127.0.0.1",7989);
-            out = new PrintWriter(clientSocket.getOutputStream());
-            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            Thread sender = new Thread(new Runnable() {
-                String msg;
-                @Override
-                public void run() {
-                    while(true){
-                        msg = kb.nextLine();
-                        out.println(msg);
-                        out.flush();
-
-                    }
-                }
-            });
-            sender.start();
-
-            Thread receiver = new Thread(new Runnable() {
-                String msg;
-                @Override
-                public void run() {
-                    try{
-                        msg = in.readLine();
-                        while(msg != null){
-                            System.out.println("Client: " + msg);
-                            msg = in.readLine();
-                        }
-                        System.out.println("Client disconnected");
-                        out.close();
-                        clientSocket.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            receiver.start();
+            clientSocket = new Socket(serverAddress,serverPort);
+            if(clientSocket.isConnected()){
+                isConnected = true;
+            }else{
+                isConnected = false;
+            }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IOException(e);
         }
+    }
+
+    public void sendMessage(String message){
+
     }
 
 

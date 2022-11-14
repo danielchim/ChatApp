@@ -15,8 +15,6 @@ public class Server {
     Set<UserThread> userThreads = new HashSet<>();
     ServerSocket serverSocket;
     Socket clientSocket;
-    BufferedReader in;
-    PrintWriter out;
     int port;
 
     public Server(int port) {
@@ -37,55 +35,28 @@ public class Server {
     }
 
     public void execute() {
-        try{
-            serverSocket = new ServerSocket(7989);
-            clientSocket = serverSocket.accept();
-            UserThread newUser = new UserThread(clientSocket, this);
-            userThreads.add(newUser);
-            newUser.start();
+        try {
+            ServerSocket serverSocket = new ServerSocket(port);
+            while (true) {
+                clientSocket = serverSocket.accept();
+                System.out.println("New user connected");
 
-            out = new PrintWriter(clientSocket.getOutputStream());
-            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            Thread sender = new Thread(new Runnable() {
-                String msg;
-                @Override
-                public void run() {
-                    while(true){
-                        msg = sc.nextLine();
-                        out.println(msg);
-                        out.flush();
+                UserThread newUser = new UserThread(clientSocket, this);
+                userThreads.add(newUser);
+                newUser.start();
 
-                    }
-                }
-            });
-            sender.start();
-
-            Thread receiver = new Thread(new Runnable() {
-                String msg;
-                @Override
-                public void run() {
-                    try{
-                        msg = in.readLine();
-                        while(msg != null){
-                            System.out.println("Client: " + msg);
-                            msg = in.readLine();
-                        }
-                        System.out.println("Client disconnected");
-                        out.close();
-                        clientSocket.close();
-                        serverSocket.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            receiver.start();
+            }
         }catch (IOException e){
             e.printStackTrace();
         }
     }
 
+    public void removeUser(UserThread user){
+        userThreads.remove(user);
+    }
+
     void broadcast(String message, UserThread excludeUser) {
+        System.out.println(userThreads.size());
         for (UserThread aUser : userThreads) {
             if (aUser != excludeUser) {
                 aUser.sendMessage(message);
@@ -97,20 +68,36 @@ public class Server {
 }
 
 class UserThread extends Thread{
-    private Socket socket;
+    private Socket clientSocket;
     private Server server;
     private PrintWriter out;
+    BufferedReader in;
+    String msg;
 
-    public UserThread(Socket socket, Server server) {
-        this.socket = socket;
+    public UserThread(Socket clientSocket, Server server) {
+        this.clientSocket = clientSocket;
         this.server = server;
     }
 
-    void run(){
-
+    public void run(){
+        try{
+            out = new PrintWriter(clientSocket.getOutputStream(),true);
+            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            msg = in.readLine();
+            while(msg != null){
+                server.broadcast(msg,this);
+                msg = in.readLine();
+            }
+            System.out.println("Client disconnected");
+            server.removeUser(this);
+            out.close();
+            clientSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     void sendMessage(String message) {
-        writer.println(message);
+        out.println(message);
     }
 }
